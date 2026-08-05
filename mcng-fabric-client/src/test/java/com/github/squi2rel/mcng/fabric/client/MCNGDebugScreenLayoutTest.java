@@ -8,7 +8,6 @@ import com.github.squi2rel.mcng.core.MCNGPortTypes;
 import com.github.squi2rel.mcng.core.NodeTypeRegistry;
 import com.github.squi2rel.mcng.core.PortTypeRegistry;
 import com.github.squi2rel.mcng.core.builtin.BuiltinNodeRegistrar;
-import net.minecraft.client.gui.screen.Screen;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Field;
@@ -16,9 +15,11 @@ import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
+import net.minecraft.client.gui.screens.Screen;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+
 
 class MCNGDebugScreenLayoutTest {
 	@Test

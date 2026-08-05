@@ -1,13 +1,13 @@
 package com.github.squi2rel.vp.video;
 
 import com.github.squi2rel.vp.VideoPlayerMain;
-import net.minecraft.client.MinecraftClient;
 import org.lwjgl.opengl.GL;
 import org.lwjgl.opengl.GLCapabilities;
 
 import java.util.Arrays;
 import java.nio.ByteBuffer;
 import java.util.concurrent.locks.ReentrantLock;
+import net.minecraft.client.Minecraft;
 
 import static org.lwjgl.opengl.ARBBufferStorage.GL_DYNAMIC_STORAGE_BIT;
 import static org.lwjgl.opengl.ARBBufferStorage.GL_MAP_COHERENT_BIT;
@@ -122,7 +122,7 @@ public class PBOManager {
             lock.lock();
             if (!allocated) return;
             BufferState state = detach();
-            MinecraftClient.getInstance().execute(() -> destroy(state));
+            Minecraft.getInstance().execute(() -> destroy(state));
         } finally {
             lock.unlock();
         }

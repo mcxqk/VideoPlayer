@@ -1,9 +1,8 @@
 package com.github.squi2rel.mcng.fabric.client;
 
-import net.minecraft.client.font.TextRenderer;
-
 import java.util.ArrayDeque;
 import java.util.Deque;
+import net.minecraft.client.gui.Font;
 
 final class GraphTextInputState {
 	private static final int MAX_LENGTH = 128;
@@ -173,13 +172,13 @@ final class GraphTextInputState {
 		selectRange(start, end);
 	}
 
-	int indexForX(TextRenderer textRenderer, double x) {
+	int indexForX(Font textRenderer, double x) {
 		if (x <= 0) {
 			return 0;
 		}
 		int previousWidth = 0;
 		for (int index = 1; index <= text.length(); index++) {
-			int width = textRenderer.getWidth(text.substring(0, index));
+			int width = textRenderer.width(text.substring(0, index));
 			if (x < width) {
 				return x - previousWidth < width - x ? index - 1 : index;
 			}
@@ -188,10 +187,10 @@ final class GraphTextInputState {
 		return text.length();
 	}
 
-	void ensureCursorVisible(TextRenderer textRenderer, int innerWidth) {
+	void ensureCursorVisible(Font textRenderer, int innerWidth) {
 		int clampedInnerWidth = Math.max(1, innerWidth);
-		int cursorX = textRenderer.getWidth(text.substring(0, cursor));
-		int maxScroll = Math.max(0, textRenderer.getWidth(text) - clampedInnerWidth);
+		int cursorX = textRenderer.width(text.substring(0, cursor));
+		int maxScroll = Math.max(0, textRenderer.width(text) - clampedInnerWidth);
 		if (cursorX < scrollX) {
 			scrollX = cursorX;
 		} else if (cursorX > scrollX + clampedInnerWidth - 1) {

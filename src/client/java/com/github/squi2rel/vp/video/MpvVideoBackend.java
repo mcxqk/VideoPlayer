@@ -9,7 +9,6 @@ import com.sun.jna.Memory;
 import com.sun.jna.Native;
 import com.sun.jna.Pointer;
 import com.sun.jna.ptr.PointerByReference;
-import net.minecraft.client.MinecraftClient;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.opengl.GL;
@@ -25,6 +24,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
+import net.minecraft.client.Minecraft;
 
 import static com.github.squi2rel.vp.video.MpvLibrary.*;
 import static org.lwjgl.glfw.GLFW.*;
@@ -39,6 +39,7 @@ import static org.lwjgl.opengl.GL30.*;
 import static org.lwjgl.opengl.GL32.*;
 import static org.lwjgl.system.MemoryUtil.NULL;
 import static org.lwjgl.system.MemoryUtil.memUTF8;
+
 
 public class MpvVideoBackend implements VideoBackend {
     private static final int INITIAL_SIZE = 1;
@@ -425,8 +426,8 @@ public class MpvVideoBackend implements VideoBackend {
         Pointer ctx = handle;
         if (ctx != null) lib.mpv_wakeup(ctx);
         discardPendingReadySyncOnRenderThread();
-        MinecraftClient client = MinecraftClient.getInstance();
-        if (!client.isOnThread()) {
+        Minecraft client = Minecraft.getInstance();
+        if (!client.isSameThread()) {
             joinRenderThread(RENDER_THREAD_JOIN_MS);
         }
     }
@@ -444,7 +445,7 @@ public class MpvVideoBackend implements VideoBackend {
     }
 
     private void cleanupSingleContextRenderer() {
-        MinecraftClient client = MinecraftClient.getInstance();
+        Minecraft client = Minecraft.getInstance();
         Runnable cleanup = () -> {
             try {
                 runSingleContextCleanup();
@@ -456,7 +457,7 @@ public class MpvVideoBackend implements VideoBackend {
                 if (ctx != null) lib.mpv_wakeup(ctx);
             }
         };
-        if (client.isOnThread()) {
+        if (client.isSameThread()) {
             cleanup.run();
             return;
         }
@@ -473,9 +474,9 @@ public class MpvVideoBackend implements VideoBackend {
     }
 
     private void discardPendingReadySyncOnRenderThread() {
-        MinecraftClient client = MinecraftClient.getInstance();
+        Minecraft client = Minecraft.getInstance();
         Runnable discard = this::discardPendingReadySync;
-        if (client.isOnThread()) {
+        if (client.isSameThread()) {
             discard.run();
             return;
         }
@@ -706,7 +707,7 @@ public class MpvVideoBackend implements VideoBackend {
     }
 
     private long createSharedWindow() {
-        long share = MinecraftClient.getInstance().getWindow().getHandle();
+        long share = Minecraft.getInstance().getWindow().handle();
         glfwDefaultWindowHints();
         try {
             glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
@@ -789,7 +790,7 @@ public class MpvVideoBackend implements VideoBackend {
     }
 
     private void notifySize(int w, int h) {
-        MinecraftClient.getInstance().execute(() -> sizeListener.accept(w, h));
+        Minecraft.getInstance().execute(() -> sizeListener.accept(w, h));
     }
 
     private void signalRenderThread() {
@@ -799,9 +800,9 @@ public class MpvVideoBackend implements VideoBackend {
     }
 
     private void destroySharedWindow(long window) {
-        MinecraftClient client = MinecraftClient.getInstance();
+        Minecraft client = Minecraft.getInstance();
         Runnable destroy = () -> glfwDestroyWindow(window);
-        if (client.isOnThread()) {
+        if (client.isSameThread()) {
             destroy.run();
         } else {
             client.execute(destroy);

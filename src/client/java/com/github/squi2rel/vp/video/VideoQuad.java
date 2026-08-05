@@ -1,10 +1,10 @@
 package com.github.squi2rel.vp.video;
 
-import net.minecraft.client.MinecraftClient;
 import org.lwjgl.opengl.GL;
 import org.lwjgl.opengl.GLCapabilities;
 
 import java.nio.ByteBuffer;
+import net.minecraft.client.Minecraft;
 
 import static org.lwjgl.opengl.GL21.*;
 import static org.lwjgl.opengl.GL12.GL_BGRA;
@@ -85,7 +85,7 @@ public class VideoQuad {
 
     public void cleanup() {
         if (textureInitialized) {
-            MinecraftClient.getInstance().execute(() -> {
+            Minecraft.getInstance().execute(() -> {
                 glDeleteTextures(textureId);
                 pbo.release();
             });

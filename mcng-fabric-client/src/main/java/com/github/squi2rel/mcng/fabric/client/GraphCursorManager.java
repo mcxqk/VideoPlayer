@@ -3,13 +3,13 @@ package com.github.squi2rel.mcng.fabric.client;
 import com.sun.jna.Library;
 import com.sun.jna.Native;
 import com.sun.jna.Pointer;
-import net.minecraft.client.MinecraftClient;
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.glfw.GLFWNativeX11;
 
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import net.minecraft.client.Minecraft;
 
 final class GraphCursorManager {
 	private static final Map<CursorKind, Long> STANDARD_CURSORS = new EnumMap<>(CursorKind.class);
@@ -24,12 +24,12 @@ final class GraphCursorManager {
 			return;
 		}
 
-		MinecraftClient client = MinecraftClient.getInstance();
-		if (client == null || client.getWindow() == null || client.mouse == null || client.mouse.isCursorLocked()) {
+		Minecraft client = Minecraft.getInstance();
+		if (client == null || client.getWindow() == null || client.mouseHandler == null || client.mouseHandler.isMouseGrabbed()) {
 			return;
 		}
 
-		long windowHandle = client.getWindow().getHandle();
+		long windowHandle = client.getWindow().handle();
 		if (X11ThemeCursorSupport.apply(windowHandle, nextKind)) {
 			currentKind = nextKind;
 			return;

@@ -1,6 +1,6 @@
 package com.github.squi2rel.vp.video;
 
-import net.minecraft.client.render.VertexConsumer;
+import com.mojang.blaze3d.vertex.VertexConsumer;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix4f;
 import org.joml.Vector2f;

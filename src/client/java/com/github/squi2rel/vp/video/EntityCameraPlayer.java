@@ -3,10 +3,9 @@ package com.github.squi2rel.vp.video;
 import com.github.squi2rel.vp.CameraRenderer;
 import com.github.squi2rel.vp.provider.EntityViewProvider;
 import com.github.squi2rel.vp.provider.VideoInfo;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.entity.Entity;
-
 import java.util.UUID;
+import net.minecraft.client.Minecraft;
+import net.minecraft.world.entity.Entity;
 
 public class EntityCameraPlayer extends AbstractCameraPlayer {
     private Entity entity;
@@ -51,10 +50,10 @@ public class EntityCameraPlayer extends AbstractCameraPlayer {
     }
 
     private static Entity findEntity(UUID uuid) {
-        MinecraftClient client = MinecraftClient.getInstance();
-        if (uuid == null || client.world == null) return null;
-        for (Entity candidate : client.world.getEntities()) {
-            if (uuid.equals(candidate.getUuid())) return candidate;
+        Minecraft client = Minecraft.getInstance();
+        if (uuid == null || client.level == null) return null;
+        for (Entity candidate : client.level.entitiesForRendering()) {
+            if (uuid.equals(candidate.getUUID())) return candidate;
         }
         return null;
     }

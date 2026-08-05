@@ -1,15 +1,14 @@
 package com.github.squi2rel.vp.danmaku;
 
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.font.TextRenderer;
-import net.minecraft.text.OrderedText;
-import net.minecraft.text.Text;
-
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Font;
+import net.minecraft.network.chat.Component;
+import net.minecraft.util.FormattedCharSequence;
 
 final class DanmakuTextLayoutCache {
     private static final int MAX_ENTRIES = 2048;
@@ -20,17 +19,17 @@ final class DanmakuTextLayoutCache {
     }
 
     static float measureWidth(String text, float scale) {
-        TextRenderer textRenderer = MinecraftClient.getInstance().textRenderer;
-        return Math.max(1.0f, textRenderer.getWidth(safeText(text)) * Math.max(0.01f, scale));
+        Font textRenderer = Minecraft.getInstance().font;
+        return Math.max(1.0f, textRenderer.width(safeText(text)) * Math.max(0.01f, scale));
     }
 
     static float measureHeight(float scale) {
-        TextRenderer textRenderer = MinecraftClient.getInstance().textRenderer;
-        return Math.max(1.0f, textRenderer.fontHeight * Math.max(0.01f, scale));
+        Font textRenderer = Minecraft.getInstance().font;
+        return Math.max(1.0f, textRenderer.lineHeight * Math.max(0.01f, scale));
     }
 
-    static OrderedText orderedText(String text) {
-        return Text.literal(safeText(text)).asOrderedText();
+    static FormattedCharSequence orderedText(String text) {
+        return Component.literal(safeText(text)).getVisualOrderText();
     }
 
     static void prepare(List<ClientDanmakuController.RenderableDanmaku> items) {
@@ -45,20 +44,20 @@ final class DanmakuTextLayoutCache {
         CachedLayout cached = CACHE.get(safe);
         if (cached != null) return cached;
 
-        TextRenderer textRenderer = MinecraftClient.getInstance().textRenderer;
-        OrderedText ordered = orderedText(safe);
-        ArrayList<TextRenderer.GlyphDrawable> outlines = new ArrayList<>(8);
+        Font textRenderer = Minecraft.getInstance().font;
+        FormattedCharSequence ordered = orderedText(safe);
+        ArrayList<Font.PreparedText> outlines = new ArrayList<>(8);
         for (int ox = -1; ox <= 1; ox++) {
             for (int oy = -1; oy <= 1; oy++) {
                 if (ox == 0 && oy == 0) continue;
-                outlines.add(textRenderer.prepare(ordered, ox, oy, WHITE, false, true, 0));
+                outlines.add(textRenderer.prepareText(ordered, ox, oy, WHITE, false, true, 0));
             }
         }
         CachedLayout created = new CachedLayout(
                 List.copyOf(outlines),
-                textRenderer.prepare(ordered, 0, 0, WHITE, false, true, 0),
-                textRenderer.getWidth(ordered),
-                textRenderer.fontHeight
+                textRenderer.prepareText(ordered, 0, 0, WHITE, false, true, 0),
+                textRenderer.width(ordered),
+                textRenderer.lineHeight
         );
         CACHE.put(safe, created);
         evictOverflow();
@@ -81,8 +80,8 @@ final class DanmakuTextLayoutCache {
         return text == null ? "" : text;
     }
 
-    record CachedLayout(List<TextRenderer.GlyphDrawable> outlines,
-                        TextRenderer.GlyphDrawable body,
+    record CachedLayout(List<Font.PreparedText> outlines,
+                        Font.PreparedText body,
                         int width,
                         int height) {
     }

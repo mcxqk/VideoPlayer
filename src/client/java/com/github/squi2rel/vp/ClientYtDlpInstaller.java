@@ -1,6 +1,6 @@
 package com.github.squi2rel.vp;
 
-import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.Minecraft;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicReference;
@@ -49,7 +49,7 @@ public final class ClientYtDlpInstaller {
                     return;
                 }
                 publish(result);
-                MinecraftClient client = MinecraftClient.getInstance();
+                Minecraft client = Minecraft.getInstance();
                 if (client != null) client.execute(VideoPlayerClient::applyNativePlatformConfig);
             });
             return created;

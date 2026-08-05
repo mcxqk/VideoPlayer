@@ -1,17 +1,17 @@
 package com.github.squi2rel.mcng.fabric.client;
 
-import net.minecraft.client.util.InputUtil;
+import com.mojang.blaze3d.platform.InputConstants;
 
 final class GraphInputText {
     private GraphInputText() {
     }
 
     static String key(int keyCode) {
-        return InputUtil.Type.KEYSYM.createFromCode(keyCode).getLocalizedText().getString();
+        return InputConstants.Type.KEYSYM.getOrCreate(keyCode).getDisplayName().getString();
     }
 
     static String mouse(int button) {
-        return InputUtil.Type.MOUSE.createFromCode(button).getLocalizedText().getString();
+        return InputConstants.Type.MOUSE.getOrCreate(button).getDisplayName().getString();
     }
 
     static String shortcut(String modifier, int keyCode) {

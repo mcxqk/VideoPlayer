@@ -1,21 +1,21 @@
 package com.github.squi2rel.vp.video;
 
+import com.mojang.blaze3d.pipeline.RenderTarget;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.textures.AddressMode;
 import com.mojang.blaze3d.textures.FilterMode;
-import net.minecraft.client.gl.Framebuffer;
-import net.minecraft.client.texture.AbstractTexture;
+import net.minecraft.client.renderer.texture.AbstractTexture;
 
 public final class FramebufferBackedTexture extends AbstractTexture {
-    private final Framebuffer framebuffer;
+    private final RenderTarget framebuffer;
 
-    public FramebufferBackedTexture(Framebuffer framebuffer) {
+    public FramebufferBackedTexture(RenderTarget framebuffer) {
         this(framebuffer, FilterMode.LINEAR);
     }
 
-    public FramebufferBackedTexture(Framebuffer framebuffer, FilterMode filterMode) {
+    public FramebufferBackedTexture(RenderTarget framebuffer, FilterMode filterMode) {
         this.framebuffer = framebuffer;
-        this.sampler = RenderSystem.getSamplerCache().get(
+        this.sampler = RenderSystem.getSamplerCache().getSampler(
                 AddressMode.CLAMP_TO_EDGE,
                 AddressMode.CLAMP_TO_EDGE,
                 filterMode,
@@ -26,14 +26,14 @@ public final class FramebufferBackedTexture extends AbstractTexture {
     }
 
     public void updateAttachment() {
-        this.glTexture = framebuffer.getColorAttachment();
-        this.glTextureView = framebuffer.getColorAttachmentView();
+        this.texture = framebuffer.getColorTexture();
+        this.textureView = framebuffer.getColorTextureView();
     }
 
     @Override
     public void close() {
-        framebuffer.delete();
-        glTexture = null;
-        glTextureView = null;
+        framebuffer.destroyBuffers();
+        texture = null;
+        textureView = null;
     }
 }

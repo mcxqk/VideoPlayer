@@ -1,6 +1,6 @@
 plugins {
-	id 'fabric-loom' version "${loom_version}"
-	id 'com.gradleup.shadow' version '9.2.2'
+	id 'fabric-loom'
+	id 'com.gradleup.shadow'
 	id 'maven-publish'
 }
 
@@ -54,7 +54,7 @@ sourceSets {
 
 dependencies {
 	minecraft "com.mojang:minecraft:${rootProject.minecraft_version}"
-	mappings "net.fabricmc:yarn:${rootProject.yarn_mappings}:v2"
+	mappings loom.officialMojangMappings()
 	modImplementation "net.fabricmc:fabric-loader:${rootProject.loader_version}"
 	modImplementation "net.fabricmc.fabric-api:fabric-api:${rootProject.fabric_version}"
 	implementation 'net.java.dev.jna:jna:5.17.0'

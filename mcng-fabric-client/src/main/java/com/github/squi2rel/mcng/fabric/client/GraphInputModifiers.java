@@ -1,8 +1,8 @@
 package com.github.squi2rel.mcng.fabric.client;
 
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.util.InputUtil;
-import net.minecraft.client.util.Window;
+import com.mojang.blaze3d.platform.InputConstants;
+import com.mojang.blaze3d.platform.Window;
+import net.minecraft.client.Minecraft;
 
 final class GraphInputModifiers {
 	private GraphInputModifiers() {
@@ -10,13 +10,13 @@ final class GraphInputModifiers {
 
 	static boolean shiftDown() {
 		try {
-			MinecraftClient client = MinecraftClient.getInstance();
+			Minecraft client = Minecraft.getInstance();
 			if (client == null) {
 				return false;
 			}
 			Window window = client.getWindow();
-			return InputUtil.isKeyPressed(window, InputUtil.GLFW_KEY_LEFT_SHIFT)
-				|| InputUtil.isKeyPressed(window, InputUtil.GLFW_KEY_RIGHT_SHIFT);
+			return InputConstants.isKeyDown(window, InputConstants.KEY_LSHIFT)
+				|| InputConstants.isKeyDown(window, InputConstants.KEY_RSHIFT);
 		} catch (RuntimeException ignored) {
 			return false;
 		}

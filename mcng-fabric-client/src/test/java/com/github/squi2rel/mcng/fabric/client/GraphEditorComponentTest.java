@@ -26,6 +26,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+
 class GraphEditorComponentTest {
 	@Test
 	void resizingEditorDoesNotResetPaletteScrollOffset() throws ReflectiveOperationException {

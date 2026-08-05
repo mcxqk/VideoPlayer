@@ -5,8 +5,6 @@ import com.github.squi2rel.vp.provider.VideoInfo;
 import com.github.squi2rel.vp.video.ClientVideoScreen;
 import com.github.squi2rel.vp.video.ScreenMetadata;
 import com.github.squi2rel.vp.video.ScreenSurface;
-import net.minecraft.client.MinecraftClient;
-
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -17,6 +15,7 @@ import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.CompletableFuture;
+import net.minecraft.client.Minecraft;
 
 import static com.github.squi2rel.vp.VideoPlayerMain.LOGGER;
 
@@ -284,13 +283,13 @@ public final class ClientDanmakuController {
         if (sourceInfo == null || !sourceInfo.vod() || segment <= 0 || loadedSegments.contains(segment) || loadingSegments.contains(segment)) return;
         String expectedInfoKey = currentInfoKey;
         loadingSegments.add(segment);
-        BiliVodDanmakuFetcher.fetchSegment(sourceInfo, segment).thenAccept(entries -> MinecraftClient.getInstance().execute(() -> {
+        BiliVodDanmakuFetcher.fetchSegment(sourceInfo, segment).thenAccept(entries -> Minecraft.getInstance().execute(() -> {
             if (!Objects.equals(expectedInfoKey, currentInfoKey)) return;
             loadingSegments.remove(segment);
             loadedSegments.add(segment);
             addVodEntries(entries);
         })).exceptionally(e -> {
-            MinecraftClient.getInstance().execute(() -> {
+            Minecraft.getInstance().execute(() -> {
                 if (!Objects.equals(expectedInfoKey, currentInfoKey)) return;
                 loadingSegments.remove(segment);
                 loadedSegments.add(segment);
