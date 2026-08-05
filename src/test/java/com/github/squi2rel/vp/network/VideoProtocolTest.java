@@ -6,6 +6,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class VideoProtocolTest {
@@ -85,6 +86,15 @@ class VideoProtocolTest {
                     type.name()
             );
         }
+    }
+
+    @Test
+    void rejectsTokensThatCannotFitTheServerHandshakeField() {
+        assertEquals(16, VideoProtocol.MAX_TOKEN_BYTES);
+        assertEquals("2.0.2|vp5", VideoProtocol.token("2.0.2"));
+        assertEquals("2.0.2-26.2|vp5", VideoProtocol.token("2.0.2-26.2"));
+        assertThrows(IllegalArgumentException.class, () -> VideoProtocol.token("2.0.2-26.2-long"));
+        assertThrows(IllegalArgumentException.class, () -> VideoProtocol.token("版本版本版本版本"));
     }
 
     private record CompatibilityCase(String localVersion, String remoteToken, boolean expected) {

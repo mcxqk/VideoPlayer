@@ -1,7 +1,10 @@
 package com.github.squi2rel.vp.network;
 
+import java.nio.charset.StandardCharsets;
+
 public final class VideoProtocol {
     public static final String WIRE_REVISION = "vp5";
+    public static final int MAX_TOKEN_BYTES = 16;
     private static final int LEGACY_WIRE_REVISION = 2;
     private static final int REPORTING_WIRE_REVISION = 4;
     private static final int IDLE_PLAY_MUTATION_WIRE_REVISION = 5;
@@ -10,7 +13,12 @@ public final class VideoProtocol {
     }
 
     public static String token(String version) {
-        return safe(version) + "|" + WIRE_REVISION;
+        String token = safe(version) + "|" + WIRE_REVISION;
+        int length = token.getBytes(StandardCharsets.UTF_8).length;
+        if (length > MAX_TOKEN_BYTES) {
+            throw new IllegalArgumentException("VideoPlayer protocol token exceeds " + MAX_TOKEN_BYTES + " UTF-8 bytes");
+        }
+        return token;
     }
 
     public static String legacyToken() {
