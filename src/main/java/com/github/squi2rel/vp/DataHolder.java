@@ -1,6 +1,7 @@
 package com.github.squi2rel.vp;
 
 import com.github.squi2rel.vp.network.ServerPacketHandler;
+import com.github.squi2rel.vp.network.ClientMessageBridge;
 import com.github.squi2rel.vp.network.VideoHandshakeState;
 import com.github.squi2rel.vp.network.VideoPackets;
 import com.github.squi2rel.vp.i18n.MinecraftTexts;
@@ -97,21 +98,21 @@ public class DataHolder {
                     if (area.addPlayer(player.getUUID())) {
                         sendAreaSnapshot(player, area);
                         area.playerEntered();
-                        notifications.add(() -> player.displayClientMessage(MinecraftTexts.tr(
+                        notifications.add(() -> ClientMessageBridge.sendOverlay(player, MinecraftTexts.tr(
                                 "message.videoplayer.area_enter",
                                 "Entered video area %s",
                                 area.name
-                        ).withStyle(ChatFormatting.DARK_AQUA), true));
+                        ).withStyle(ChatFormatting.DARK_AQUA)));
                     }
                 } else {
                     if (area.removePlayer(player.getUUID())) {
                         notifications.add(() -> ServerPacketHandler.sendTo(player, VideoPackets.unloadArea(area)));
                         notifications.add(() -> ServerPacketHandler.sendTo(player, VideoPackets.removeArea(area)));
-                        notifications.add(() -> player.displayClientMessage(MinecraftTexts.tr(
+                        notifications.add(() -> ClientMessageBridge.sendOverlay(player, MinecraftTexts.tr(
                                 "message.videoplayer.area_leave",
                                 "Left video area %s",
                                 area.name
-                        ).withStyle(ChatFormatting.DARK_AQUA), true));
+                        ).withStyle(ChatFormatting.DARK_AQUA)));
                     }
                 }
             }
