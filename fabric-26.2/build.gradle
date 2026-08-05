@@ -79,8 +79,10 @@ dependencies {
 	implementation 'net.java.dev.jna:jna:5.17.0'
 	implementation 'org.brotli:dec:0.1.2'
 	include 'org.brotli:dec:0.1.2'
+	shadowBundle 'org.brotli:dec:0.1.2'
 	implementation 'com.google.zxing:core:3.5.3'
 	include 'com.google.zxing:core:3.5.3'
+	shadowBundle 'com.google.zxing:core:3.5.3'
 	implementation project(':mcng-core')
 	implementation project(':mcng-fabric-client-26.2')
 	shadowBundle project(':mcng-core')

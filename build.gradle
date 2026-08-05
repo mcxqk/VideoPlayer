@@ -1,3 +1,8 @@
+import groovy.json.JsonSlurper
+
+import java.nio.charset.StandardCharsets
+import java.util.jar.JarFile
+
 plugins {
 	id 'base'
 	id 'fabric-loom' version "${loom_version}" apply false
@@ -25,8 +30,230 @@ subprojects {
 
 tasks.named('build') {
 	dependsOn ':fabric-1.21.11:build'
+	dependsOn ':fabric-26.2:build'
 	dependsOn ':paper-plugin:build'
 	dependsOn ':paper-plugin-26.2:build'
 	dependsOn ':mcng-core:build'
 	dependsOn ':mcng-fabric-client:build'
+	dependsOn ':mcng-fabric-client-26.2:build'
+}
+
+def releaseVersion = project.version.toString()
+def releaseDirectory = layout.buildDirectory.dir('release')
+def releaseArtifacts = [
+	[
+		fileName: "VideoPlayer-${releaseVersion}.jar",
+		source: file("fabric-1.21.11/build/libs/VideoPlayer-${releaseVersion}.jar"),
+		type: 'fabric',
+		minecraft: '~1.21.11',
+		javaDependency: '>=21',
+		classEntry: 'com/github/squi2rel/vp/VideoPlayerMain.class',
+		classMajor: 65,
+		requiredEntries: [
+			'fabric.mod.json',
+			'videoplayer.client.mixins.json',
+			'com/github/squi2rel/vp/network/VideoProtocol.class',
+			'com/github/squi2rel/vp/render/ExternalTextureRegistry.class',
+			'META-INF/jars/core-3.5.3.jar',
+			'META-INF/jars/dec-0.1.2.jar'
+		]
+	],
+	[
+		fileName: "VideoPlayer-Paper-${releaseVersion}.jar",
+		source: file("paper-plugin/build/libs/VideoPlayer-Paper-${releaseVersion}.jar"),
+		type: 'paper',
+		apiVersion: '1.21',
+		classEntry: 'com/github/squi2rel/vp/VideoPlayerPaperPlugin.class',
+		classMajor: 65,
+		requiredEntries: [
+			'plugin.yml',
+			'com/github/squi2rel/vp/VideoPlayerPaperPlugin.class',
+			'com/github/squi2rel/vp/FoliaScheduler.class',
+			'com/github/squi2rel/vp/network/VideoProtocol.class'
+		]
+	],
+	[
+		fileName: "VideoPlayer-${releaseVersion}-26.2.jar",
+		source: file("fabric-26.2/build/libs/VideoPlayer-${releaseVersion}-26.2.jar"),
+		type: 'fabric',
+		minecraft: '~26.2',
+		javaDependency: '>=25',
+		classEntry: 'com/github/squi2rel/vp/VideoPlayerMain.class',
+		classMajor: 69,
+		requiredEntries: [
+			'fabric.mod.json',
+			'videoplayer.client.mixins.json',
+			'com/github/squi2rel/vp/network/VideoProtocol.class',
+			'com/github/squi2rel/vp/render/ExternalTextureRegistry.class',
+			'com/github/squi2rel/vp/render/FrameRenderSnapshot.class',
+			'com/github/squi2rel/vp/render/WorldRenderBatch.class',
+			'com/github/squi2rel/vp/mixin/client/GameRendererTargetAccessor.class',
+			'com/github/squi2rel/vp/mixin/client/GlDeviceAccessor.class',
+			'org/brotli/dec/BrotliInputStream.class',
+			'com/google/zxing/qrcode/QRCodeWriter.class'
+		]
+	],
+	[
+		fileName: "VideoPlayer-Paper-${releaseVersion}-26.2.jar",
+		source: file("paper-plugin-26.2/build/libs/VideoPlayer-Paper-${releaseVersion}-26.2.jar"),
+		type: 'paper',
+		apiVersion: '26.2',
+		classEntry: 'com/github/squi2rel/vp/VideoPlayerPaperPlugin.class',
+		classMajor: 69,
+		requiredEntries: [
+			'plugin.yml',
+			'com/github/squi2rel/vp/VideoPlayerPaperPlugin.class',
+			'com/github/squi2rel/vp/FoliaScheduler.class',
+			'com/github/squi2rel/vp/network/VideoProtocol.class'
+		]
+	]
+]
+
+tasks.register('assembleRelease') {
+	group = 'build'
+	description = 'Builds and copies the four supported release archives.'
+	dependsOn ':fabric-1.21.11:build'
+	dependsOn ':fabric-26.2:build'
+	dependsOn ':paper-plugin:build'
+	dependsOn ':paper-plugin-26.2:build'
+	inputs.files(releaseArtifacts.collect { it.source })
+	outputs.dir(releaseDirectory)
+	outputs.upToDateWhen { false }
+	doLast {
+		File target = releaseDirectory.get().asFile.canonicalFile
+		if (!target.toPath().startsWith(rootProject.projectDir.canonicalFile.toPath())) {
+			throw new GradleException("Release directory is outside the project: ${target}")
+		}
+		delete target
+		if (!target.mkdirs() && !target.isDirectory()) {
+			throw new GradleException("Cannot create release directory: ${target}")
+		}
+		releaseArtifacts.each { artifact ->
+			File source = artifact.source
+			if (!source.isFile()) throw new GradleException("Missing release input: ${source}")
+			copy {
+				from source
+				into target
+				rename { artifact.fileName }
+			}
+		}
+	}
+}
+
+tasks.register('verifyRelease') {
+	group = 'verification'
+	description = 'Verifies release filenames, descriptors, bytecode targets, dependencies, and protocol token.'
+	dependsOn tasks.named('assembleRelease')
+	outputs.upToDateWhen { false }
+	doLast {
+		File target = releaseDirectory.get().asFile
+		List<String> expectedNames = releaseArtifacts.collect { it.fileName.toString() }.sort()
+		List<File> children = target.listFiles() == null ? [] : target.listFiles().toList()
+		if (children.any { !it.isFile() }) {
+			throw new GradleException("Release directory contains a non-file entry: ${children.find { !it.isFile() }}")
+		}
+		List<String> actualNames = children.collect { it.name }.sort()
+		if (actualNames != expectedNames) {
+			throw new GradleException("Release directory must contain exactly ${expectedNames}; found ${actualNames}")
+		}
+
+		def readEntry = { JarFile jar, String path ->
+			def entry = jar.getJarEntry(path)
+			if (entry == null) throw new GradleException("${jar.name} is missing ${path}")
+			jar.getInputStream(entry).withCloseable { input -> input.readAllBytes() }
+		}
+		def yamlValue = { String text, String key ->
+			String prefix = key + ':'
+			String line = text.readLines().find { it.startsWith(prefix) }
+			if (line == null) throw new GradleException("plugin.yml is missing ${key}")
+			String value = line.substring(prefix.length()).trim()
+			if (value.length() >= 2 && ((value.startsWith("'") && value.endsWith("'"))
+					|| (value.startsWith('"') && value.endsWith('"')))) {
+				value = value.substring(1, value.length() - 1)
+			}
+			value
+		}
+		List<String> forbiddenBuildValues = [
+			'GRADLE_OPTS',
+			'org.gradle.jvmargs',
+			'http.proxyHost',
+			'https.proxyHost',
+			'http.proxyPort',
+			'https.proxyPort'
+		]
+		Set<String> textExtensions = ['class', 'json', 'yml', 'yaml', 'properties', 'toml', 'txt', 'xml', 'mf'] as Set
+
+		releaseArtifacts.each { artifact ->
+			File archive = new File(target, artifact.fileName.toString())
+			JarFile jar = new JarFile(archive)
+			try {
+				artifact.requiredEntries.each { required ->
+					if (jar.getJarEntry(required) == null) {
+						throw new GradleException("${archive.name} is missing ${required}")
+					}
+				}
+				byte[] classBytes = readEntry(jar, artifact.classEntry)
+				if (classBytes.length < 8) throw new GradleException("Invalid class file in ${archive.name}")
+				int major = ((classBytes[6] & 0xFF) << 8) | (classBytes[7] & 0xFF)
+				if (major != artifact.classMajor) {
+					throw new GradleException("${archive.name} class major is ${major}; expected ${artifact.classMajor}")
+				}
+
+				if (artifact.type == 'fabric') {
+					def metadata = new JsonSlurper().parseText(new String(readEntry(jar, 'fabric.mod.json'), StandardCharsets.UTF_8))
+					if (metadata.id != 'videoplayer') throw new GradleException("${archive.name} has invalid mod id ${metadata.id}")
+					if (metadata.version != releaseVersion) throw new GradleException("${archive.name} has internal version ${metadata.version}")
+					if (!(metadata.authors instanceof Collection) || !metadata.authors.contains('cloudfl4re')) {
+						throw new GradleException("${archive.name} authors do not contain cloudfl4re")
+					}
+					if (metadata.depends?.minecraft != artifact.minecraft) {
+						throw new GradleException("${archive.name} targets Minecraft ${metadata.depends?.minecraft}; expected ${artifact.minecraft}")
+					}
+					if (metadata.depends?.java != artifact.javaDependency) {
+						throw new GradleException("${archive.name} requires Java ${metadata.depends?.java}; expected ${artifact.javaDependency}")
+					}
+				} else {
+					String plugin = new String(readEntry(jar, 'plugin.yml'), StandardCharsets.UTF_8)
+					if (yamlValue(plugin, 'name') != 'VideoPlayer') throw new GradleException("${archive.name} has an invalid plugin name")
+					if (yamlValue(plugin, 'main') != 'com.github.squi2rel.vp.VideoPlayerPaperPlugin') {
+						throw new GradleException("${archive.name} has an invalid main class")
+					}
+					if (yamlValue(plugin, 'version') != releaseVersion) throw new GradleException("${archive.name} has an invalid internal version")
+					if (yamlValue(plugin, 'api-version') != artifact.apiVersion) {
+						throw new GradleException("${archive.name} has api-version ${yamlValue(plugin, 'api-version')}; expected ${artifact.apiVersion}")
+					}
+					if (yamlValue(plugin, 'folia-supported') != 'true') throw new GradleException("${archive.name} is not marked Folia-supported")
+					if (!yamlValue(plugin, 'authors').contains('cloudfl4re')) throw new GradleException("${archive.name} authors do not contain cloudfl4re")
+				}
+
+				jar.entries().each { entry ->
+					if (entry.directory) return
+					String extension = entry.name.contains('.') ? entry.name.substring(entry.name.lastIndexOf('.') + 1).toLowerCase(Locale.ROOT) : ''
+					if (!textExtensions.contains(extension)) return
+					String content = new String(jar.getInputStream(entry).withCloseable { it.readAllBytes() }, StandardCharsets.ISO_8859_1)
+					String forbidden = forbiddenBuildValues.find { content.contains(it) }
+					if (forbidden != null) throw new GradleException("${archive.name}!/${entry.name} contains forbidden build value ${forbidden}")
+				}
+			} finally {
+				jar.close()
+			}
+
+			URLClassLoader loader = new URLClassLoader([archive.toURI().toURL()] as URL[], ClassLoader.getPlatformClassLoader())
+			try {
+				Class<?> protocol = Class.forName('com.github.squi2rel.vp.network.VideoProtocol', true, loader)
+				String token = protocol.getMethod('token', String.class).invoke(null, releaseVersion)
+				String revision = protocol.getField('WIRE_REVISION').get(null)
+				int maxBytes = protocol.getField('MAX_TOKEN_BYTES').getInt(null)
+				if (revision != 'vp5' || token != "${releaseVersion}|vp5") {
+					throw new GradleException("${archive.name} has protocol token ${token} and revision ${revision}")
+				}
+				if (token.getBytes(StandardCharsets.UTF_8).length > maxBytes || maxBytes != 16) {
+					throw new GradleException("${archive.name} protocol token exceeds the expected 16-byte limit")
+				}
+			} finally {
+				loader.close()
+			}
+		}
+		logger.lifecycle("Verified release archives: ${expectedNames}")
+	}
 }
