@@ -43,6 +43,8 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents;
+import net.fabricmc.fabric.api.resource.ResourceManagerHelper;
+import net.fabricmc.fabric.api.resource.SimpleSynchronousResourceReloadListener;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
@@ -52,6 +54,9 @@ import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ClientboundBossEventPacket;
+import net.minecraft.resources.Identifier;
+import net.minecraft.server.packs.PackType;
+import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.util.profiling.Profiler;
 import net.minecraft.util.profiling.ProfilerFiller;
 import net.minecraft.world.BossEvent;
@@ -161,6 +166,7 @@ public class VideoPlayerClient implements ClientModInitializer {
             ).withStyle(ChatFormatting.RED), false));
         }
         loadConfig();
+        registerExternalTextureReload();
         activeAudioChannelMode = AudioChannelMode.normalize(config.audioChannelMode);
         BiliBiliProvider.setCookieSupplier(BiliCookie::header);
         YouTubeProvider.configureMissingYtdlHandler(() -> {
@@ -928,6 +934,7 @@ public class VideoPlayerClient implements ClientModInitializer {
             screen.cleanup();
         }
         screens.clear();
+        ScreenRenderer.clearExternalTextures();
         ClientPacketHandler.resetPendingRequests();
         ScreenVolumeCache.clear();
         ClientDanmakuRenderer.clearCache();
@@ -944,6 +951,20 @@ public class VideoPlayerClient implements ClientModInitializer {
             bossBarAdded = false;
         }
         VideoCreationEditor.instance().clear();
+    }
+
+    private static void registerExternalTextureReload() {
+        ResourceManagerHelper.get(PackType.CLIENT_RESOURCES).registerReloadListener(new SimpleSynchronousResourceReloadListener() {
+            @Override
+            public Identifier getFabricId() {
+                return Identifier.fromNamespaceAndPath("videoplayer", "external_textures");
+            }
+
+            @Override
+            public void onResourceManagerReload(ResourceManager resourceManager) {
+                ScreenRenderer.clearExternalTextures();
+            }
+        });
     }
 
     private static int openDiagnostics(CommandContext<FabricClientCommandSource> context) {

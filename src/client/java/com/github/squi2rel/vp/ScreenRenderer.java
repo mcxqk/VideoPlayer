@@ -4,6 +4,7 @@ import com.github.squi2rel.vp.video.ClientVideoScreen;
 import com.github.squi2rel.vp.danmaku.ClientDanmakuRenderer;
 import com.github.squi2rel.vp.video.ExternalGlTexture;
 import com.github.squi2rel.vp.mixin.client.DrawContextAccessor;
+import com.github.squi2rel.vp.render.ExternalTextureRegistry;
 import com.github.squi2rel.vp.vivecraft.Vivecraft;
 import com.mojang.blaze3d.buffers.GpuBuffer;
 import com.mojang.blaze3d.buffers.GpuBufferSlice;
@@ -59,7 +60,7 @@ import static com.github.squi2rel.vp.VideoPlayerClient.*;
 public class ScreenRenderer {
     private static final String SAMPLER = "Sampler0";
     private static final Identifier PLACEHOLDER_TEXTURE = Identifier.fromNamespaceAndPath("videoplayer", "placeholder.png");
-    private static final Map<Integer, Identifier> textureIds = new HashMap<>();
+    private static final ExternalTextureRegistry EXTERNAL_TEXTURES = new ExternalTextureRegistry();
     private static final Map<LayerKey, RenderType> layers = new HashMap<>();
     private static final RenderPipeline VIDEO_WORLD_QUADS = RenderPipelines.register(RenderPipeline.builder(RenderPipelines.GUI_TEXTURED_SNIPPET)
             .withLocation(Identifier.fromNamespaceAndPath("videoplayer", "video_world_quads"))
@@ -317,17 +318,12 @@ public class ScreenRenderer {
     }
 
     private static RenderType texturedLayer(int textureId, LayerKind kind) {
-        return layers.computeIfAbsent(new LayerKey(textureId, kind), key ->
-                RenderType.create("videoplayer_" + kind.name().toLowerCase() + "_" + textureId, setup(textureId, kind)));
+        return texturedLayer(textureIdentifier(textureId), kind);
     }
 
     private static RenderType texturedLayer(Identifier texture, LayerKind kind) {
         return layers.computeIfAbsent(new LayerKey(texture, kind), key ->
                 RenderType.create("videoplayer_" + kind.name().toLowerCase() + "_" + texture.toString().replace(':', '_').replace('/', '_'), setup(texture, kind)));
-    }
-
-    private static RenderSetup setup(int textureId, LayerKind kind) {
-        return setup(textureIdentifier(textureId), kind);
     }
 
     private static RenderSetup setup(Identifier texture, LayerKind kind) {
@@ -342,11 +338,48 @@ public class ScreenRenderer {
 
     public static Identifier textureIdentifier(int textureId) {
         if (textureId < 0) return PLACEHOLDER_TEXTURE;
-        return textureIds.computeIfAbsent(textureId, id -> {
-            Identifier identifier = Identifier.fromNamespaceAndPath("videoplayer", "external_texture/" + id);
-            Minecraft.getInstance().getTextureManager().register(identifier, new ExternalGlTexture(id, 1, 1));
-            return identifier;
+        ExternalTextureRegistry.Acquisition acquisition = EXTERNAL_TEXTURES.acquire(textureId);
+        Identifier identifier = textureIdentifier(acquisition.registration());
+        if (acquisition.created()) {
+            Minecraft.getInstance().getTextureManager().register(identifier, new ExternalGlTexture(textureId, 1, 1));
+        }
+        return identifier;
+    }
+
+    public static void releaseTexture(int textureId) {
+        if (textureId < 0) return;
+        EXTERNAL_TEXTURES.release(textureId).ifPresent(ScreenRenderer::releaseTexture);
+    }
+
+    public static void clearExternalTextures() {
+        List<ExternalTextureRegistry.Registration> registrations = EXTERNAL_TEXTURES.clear();
+        runOnClientThread(() -> {
+            for (ExternalTextureRegistry.Registration registration : registrations) {
+                Minecraft.getInstance().getTextureManager().release(textureIdentifier(registration));
+            }
+            layers.clear();
         });
+    }
+
+    private static void releaseTexture(ExternalTextureRegistry.Registration registration) {
+        Identifier identifier = textureIdentifier(registration);
+        runOnClientThread(() -> {
+            Minecraft.getInstance().getTextureManager().release(identifier);
+            layers.keySet().removeIf(key -> key.textureId.equals(identifier));
+        });
+    }
+
+    private static Identifier textureIdentifier(ExternalTextureRegistry.Registration registration) {
+        return Identifier.fromNamespaceAndPath("videoplayer", registration.identifierPath());
+    }
+
+    private static void runOnClientThread(Runnable task) {
+        Minecraft client = Minecraft.getInstance();
+        if (client.isSameThread()) {
+            task.run();
+        } else {
+            client.execute(task);
+        }
     }
 
     public static int placeholderTextureId() {

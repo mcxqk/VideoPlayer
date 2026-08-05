@@ -1,5 +1,6 @@
 package com.github.squi2rel.vp.video;
 
+import com.github.squi2rel.vp.ScreenRenderer;
 import com.github.squi2rel.vp.VideoPlayerMain;
 import com.github.squi2rel.vp.VideoPlayerClient;
 import com.github.squi2rel.vp.filtergraph.MpvLavfiFilterCatalog;
@@ -414,6 +415,7 @@ public class MpvVideoBackend implements VideoBackend {
         ACTIVE_BACKENDS.remove(this);
         if (!released.compareAndSet(false, true)) return;
         acceptingFrames.set(false);
+        releaseRegisteredTextures();
         discardPendingPlayback();
         tasks.clear();
         if (singleContext) {
@@ -1266,11 +1268,18 @@ public class MpvVideoBackend implements VideoBackend {
                 fboIds[i] = -1;
             }
             if (textureIds[i] >= 0) {
+                ScreenRenderer.releaseTexture(textureIds[i]);
                 glDeleteTextures(textureIds[i]);
                 textureIds[i] = -1;
             }
         }
         renderTextureIndex = 0;
+    }
+
+    private void releaseRegisteredTextures() {
+        for (int textureId : textureIds) {
+            ScreenRenderer.releaseTexture(textureId);
+        }
     }
 
     private void clearPublishedTexture() {

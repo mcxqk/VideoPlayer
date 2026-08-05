@@ -3,6 +3,7 @@ package com.github.squi2rel.vp;
 import com.github.squi2rel.vp.creation.SelectionPreviewRenderer;
 import com.github.squi2rel.vp.danmaku.ClientDanmakuRenderer;
 import com.github.squi2rel.vp.mixin.client.DrawContextAccessor;
+import com.github.squi2rel.vp.render.ExternalTextureRegistry;
 import com.github.squi2rel.vp.render.FrameRenderSnapshot;
 import com.github.squi2rel.vp.render.WorldRenderBatch;
 import com.github.squi2rel.vp.video.ClientVideoScreen;
@@ -11,9 +12,7 @@ import com.github.squi2rel.vp.vivecraft.Vivecraft;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelExtractionContext;
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext;
 import net.minecraft.client.Camera;
@@ -40,7 +39,7 @@ import static com.github.squi2rel.vp.VideoPlayerClient.screens;
 @SuppressWarnings({"resource", "DataFlowIssue"})
 public final class ScreenRenderer {
     private static final Identifier PLACEHOLDER_TEXTURE = Identifier.fromNamespaceAndPath("videoplayer", "placeholder.png");
-    private static final Map<Integer, Identifier> textureIds = new HashMap<>();
+    private static final ExternalTextureRegistry EXTERNAL_TEXTURES = new ExternalTextureRegistry();
     private static final Quaternionf rotation = new Quaternionf();
     private static volatile FrameRenderSnapshot frameSnapshot = FrameRenderSnapshot.EMPTY;
 
@@ -121,11 +120,46 @@ public final class ScreenRenderer {
 
     public static Identifier textureIdentifier(int textureId) {
         if (textureId < 0) return PLACEHOLDER_TEXTURE;
-        return textureIds.computeIfAbsent(textureId, id -> {
-            Identifier identifier = Identifier.fromNamespaceAndPath("videoplayer", "external_texture/" + id);
-            Minecraft.getInstance().getTextureManager().register(identifier, new ExternalGlTexture(id, 1, 1));
-            return identifier;
+        ExternalTextureRegistry.Acquisition acquisition = EXTERNAL_TEXTURES.acquire(textureId);
+        Identifier identifier = textureIdentifier(acquisition.registration());
+        if (acquisition.created()) {
+            Minecraft.getInstance().getTextureManager().register(identifier, new ExternalGlTexture(textureId, 1, 1));
+        }
+        return identifier;
+    }
+
+    public static void releaseTexture(int textureId) {
+        if (textureId < 0) return;
+        frameSnapshot = FrameRenderSnapshot.EMPTY;
+        EXTERNAL_TEXTURES.release(textureId).ifPresent(ScreenRenderer::releaseTexture);
+    }
+
+    public static void clearExternalTextures() {
+        frameSnapshot = FrameRenderSnapshot.EMPTY;
+        List<ExternalTextureRegistry.Registration> registrations = EXTERNAL_TEXTURES.clear();
+        runOnClientThread(() -> {
+            for (ExternalTextureRegistry.Registration registration : registrations) {
+                Minecraft.getInstance().getTextureManager().release(textureIdentifier(registration));
+            }
         });
+    }
+
+    private static void releaseTexture(ExternalTextureRegistry.Registration registration) {
+        Identifier identifier = textureIdentifier(registration);
+        runOnClientThread(() -> Minecraft.getInstance().getTextureManager().release(identifier));
+    }
+
+    private static Identifier textureIdentifier(ExternalTextureRegistry.Registration registration) {
+        return Identifier.fromNamespaceAndPath("videoplayer", registration.identifierPath());
+    }
+
+    private static void runOnClientThread(Runnable task) {
+        Minecraft client = Minecraft.getInstance();
+        if (client.isSameThread()) {
+            task.run();
+        } else {
+            client.execute(task);
+        }
     }
 
     public static int placeholderTextureId() {

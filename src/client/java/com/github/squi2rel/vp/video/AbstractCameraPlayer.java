@@ -1,5 +1,6 @@
 package com.github.squi2rel.vp.video;
 
+import com.github.squi2rel.vp.ScreenRenderer;
 import com.mojang.blaze3d.opengl.GlTexture;
 import com.mojang.blaze3d.pipeline.RenderTarget;
 import com.mojang.blaze3d.pipeline.TextureTarget;
@@ -29,6 +30,8 @@ public abstract class AbstractCameraPlayer extends AbstractScreenPlayer implemen
 
     @Override
     public void cleanup() {
+        releaseFramebuffer(framebuffer1);
+        releaseFramebuffer(framebuffer2);
         if (framebuffer1 != null) framebuffer1.destroyBuffers();
         if (framebuffer2 != null) framebuffer2.destroyBuffers();
         framebuffer1 = null;
@@ -54,7 +57,10 @@ public abstract class AbstractCameraPlayer extends AbstractScreenPlayer implemen
         }
         targetWidth = width;
         targetHeight = height;
-        if (framebuffer != null && (framebuffer.width != width || framebuffer.height != height)) framebuffer.resize(width, height);
+        if (framebuffer != null && (framebuffer.width != width || framebuffer.height != height)) {
+            releaseFramebuffer(framebuffer);
+            framebuffer.resize(width, height);
+        }
     }
 
     @Override
@@ -91,5 +97,11 @@ public abstract class AbstractCameraPlayer extends AbstractScreenPlayer implemen
     @Override
     public boolean isPostUpdate() {
         return true;
+    }
+
+    private static void releaseFramebuffer(RenderTarget target) {
+        if (target != null && target.getColorTexture() instanceof GlTexture texture) {
+            ScreenRenderer.releaseTexture(texture.glId());
+        }
     }
 }

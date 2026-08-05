@@ -1,5 +1,6 @@
 package com.github.squi2rel.vp.video;
 
+import com.github.squi2rel.vp.ScreenRenderer;
 import org.lwjgl.opengl.GL;
 import org.lwjgl.opengl.GLCapabilities;
 
@@ -86,6 +87,7 @@ public class VideoQuad {
     public void cleanup() {
         if (textureInitialized) {
             Minecraft.getInstance().execute(() -> {
+                ScreenRenderer.releaseTexture(textureId);
                 glDeleteTextures(textureId);
                 pbo.release();
             });
